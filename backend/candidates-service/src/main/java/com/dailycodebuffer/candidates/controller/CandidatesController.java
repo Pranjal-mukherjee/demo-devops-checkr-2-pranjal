@@ -33,7 +33,7 @@ import java.util.Optional;
 @CrossOrigin(origins = {"http://localhost:3001","https://frontend-bc-checkr.play-nooax-ai-with.me"},methods = {RequestMethod.GET,RequestMethod.POST,RequestMethod.DELETE,RequestMethod.PUT,RequestMethod.PATCH})
 public class CandidatesController {
 
-    //test
+    
     private final CandidatesService candidatesService;
     private final ModelMapper modelMapper;
 
