@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: action-service-container
-        image: ghcr.io/pranjal-mukherjee/bootcamp104-backend-action-service:v4
+        image: ghcr.io/pranjal-mukherjee/bootcamp104-backend-action-service:v6
         ports:
         - containerPort: 9004
         env:
@@ -38,6 +38,8 @@ spec:
               value: "false"
       imagePullSecrets: 
       - name: ghcr-secret
+      nodeSelector:
+        size: large
   selector:
     matchLabels:
       app: action-service-label

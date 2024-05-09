@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: searches-services-container
-        image: ghcr.io/pranjal-mukherjee/bootcamp104-backend-searches-services:v3
+        image: ghcr.io/pranjal-mukherjee/bootcamp104-backend-searches-services:v6
         ports:
         - containerPort: 9002
         env:
@@ -38,6 +38,15 @@ spec:
               value: "false"
       imagePullSecrets: 
       - name: ghcr-secret
-  selector:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: size
+                    operator: In
+                    values:
+                      - small
+  selector: 
     matchLabels:
       app: searches-service-label

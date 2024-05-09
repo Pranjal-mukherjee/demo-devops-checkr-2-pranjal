@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: user-service-container
-        image: ghcr.io/pranjal-mukherjee/bootcamp104-backend-user-service:v4
+        image: ghcr.io/pranjal-mukherjee/bootcamp104-backend-user-service:v6
         ports:
         - containerPort: 8083
         env:
@@ -38,6 +38,11 @@ spec:
               value: "false"
       imagePullSecrets: 
       - name: ghcr-secret
+      tolerations:
+        - effect: NoSchedule
+          key: mysize
+          operator: "Equal"
+          value: medium
   selector:
     matchLabels:
       app: user-service-label
