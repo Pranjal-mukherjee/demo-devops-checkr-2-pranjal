@@ -33,7 +33,7 @@ jobs:
         id: set-output
         run: | 
           changed_services=()
-          services=("cloud-config-server","api-gateway","action-service","service-registry","reports-services","searches-services","user-service","candidates-service")  
+          services=("cloud-config-server" "api-gateway" "action-service" "service-registry" "reports-services" "searches-services" "user-service" "candidates-service")  
           backend_workflow_changed=false
           for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
               path=$(echo "$file" | cut -d'/' -f3)
@@ -81,7 +81,7 @@ jobs:
        
         strategy:
             matrix:
-                services:  ${{fromJson(needs.servicesChanged.outputs.changed-services)}}
+                services: ${{fromJson(needs.servicesChanged.outputs.changed-services)}}
         defaults:
           run:
             working-directory: backend/${{ matrix.services }}
