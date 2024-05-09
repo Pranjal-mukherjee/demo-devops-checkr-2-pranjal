@@ -1,0 +1,120 @@
+name: BOOTCAMP104- Backend deployment
+run-name: Backend deployment triggered by ${{ github.actor }}.
+on:
+  push:
+    branches:
+      - deployment
+    paths:
+      - backend/**
+      - .github/workflows/backendDeploy.yaml
+
+jobs:
+  servicesChanged:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: backend
+
+    outputs:
+      changed-services: ${{ steps.set-output.outputs.changed-services }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v37
+
+      - name: Determine changed services
+        id: set-output
+        run: | 
+          changed_services=()
+          services=("cloud-config-server" "api-gateway" "action-service" "service-registry" "reports-services" "searches-services" "user-service" "candidates-service")  
+          backend_workflow_changed=false
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+              path=$(echo "$file" | cut -d'/' -f3)
+              if [[ "backendDeploy.yaml" == $path ]]; then
+                  changed_services=("${services[@]}")
+                  backend_workflow_changed=true
+                  break
+              fi
+          done
+
+          if [[ $backend_workflow_changed == false ]]; then
+              for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+                  path=$(echo "$file" | cut -d'/' -f2)
+                  already_exists=false
+                  for changed in "${changed_services[@]}"; do
+                      if [[ $changed == $path ]]; then
+                          already_exists=true
+                          break
+                      fi
+                  done
+                  if [[ $already_exists == false ]]; then
+                      for service in "${services[@]}"; do
+                          if [[ $service == $path ]]; then
+                              changed_services+=("$path")
+                              break
+                          fi
+                      done  
+                  fi
+              done
+          fi
+
+          json_array="[\"${changed_services[0]}\"" 
+          for i in "${changed_services[@]:1}"; do
+              json_array+=",\"$i\""
+          done
+          json_array+="]"
+
+          echo "::set-output name=changed-services::$json_array"
+          echo "Changed services normal: ${changed_services[*]}"
+
+  build_and_deploy:
+        runs-on: ubuntu-latest
+        needs: servicesChanged
+        timeout-minutes: 10
+       
+        strategy:
+            matrix:
+                services: ${{fromJson(needs.servicesChanged.outputs.changed-services)}}
+        defaults:
+          run:
+            working-directory: backend/${{ matrix.services }}
+              
+        steps:
+          - name: Checkout the code
+            uses: actions/checkout@v3
+            with:
+              fetch-depth: 0
+          - name: Setup Java
+            uses: actions/setup-java@v3
+            with:
+                distribution: "corretto"
+                java-version: "11"
+          - name: Cache Maven packages
+            uses: actions/cache@v1
+            with:
+              path: ~/.m2
+              key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+              restore-keys: ${{ runner.os }}-m2    
+          - name: Login to GitHub Container Registry
+            run: docker login --username ${{secrets.GHCR_USERNAME}} --password ${{secrets.GHCR_PAT}} ghcr.io 
+          - name: Build Docker Image
+            run:  docker build . --tag ghcr.io/${{secrets.GHCR_USERNAME}}/bootcamp104-backend-${{matrix.services}}:v${{github.run_number}}
+          - name:  Push Docker Image to GHCR
+            run: docker push ghcr.io/${{secrets.GHCR_USERNAME}}/bootcamp104-backend-${{matrix.services}}:v${{github.run_number}} 
+          - name: Configure AWS Credentials
+            uses: aws-actions/configure-aws-credentials@v1
+            with:
+              aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+              aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+              aws-region: ${{ secrets.EKS_CLUSTER_REGION }}
+          - name: Add EKS Cluster and deploy the application
+            run: |
+              aws eks update-kubeconfig --name  ${{secrets.EKS_CLUSTER_NAME}}  --region ${{secrets.EKS_CLUSTER_REGION}}
+              kubectl set image deployment/bc104-${{matrix.services}}-deployment ${{matrix.services}}-container=ghcr.io/${{secrets.GHCR_USERNAME}}/bootcamp104-backend-${{matrix.services}}:v${{github.run_number}}

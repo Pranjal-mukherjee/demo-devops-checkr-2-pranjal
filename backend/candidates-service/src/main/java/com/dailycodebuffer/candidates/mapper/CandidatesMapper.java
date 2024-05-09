@@ -1,5 +1,4 @@
 package com.dailycodebuffer.candidates.mapper;
-
 import com.dailycodebuffer.candidates.dto.CandidatesDTO;
 import com.dailycodebuffer.candidates.entity.Candidates;
 import org.modelmapper.ModelMapper;
